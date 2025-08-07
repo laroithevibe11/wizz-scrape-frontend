@@ -7,6 +7,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Plane, RefreshCw, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import airplaneHero from '@/assets/airplane-hero.jpg';
+import viennaImage from '@/assets/cities/vienna.jpg';
+import baselImage from '@/assets/cities/basel.jpg';
+import veniceImage from '@/assets/cities/venice.jpg';
+import parisImage from '@/assets/cities/paris.jpg';
+import defaultCityImage from '@/assets/cities/default.jpg';
 
 interface Airport {
   code: string;
@@ -155,6 +160,16 @@ const FlightSearch = () => {
     setExpandedDestinations(newExpanded);
   };
 
+  // Get city image based on destination
+  const getCityImage = (destination: string): string => {
+    const cityName = destination.toLowerCase();
+    if (cityName.includes('vienna')) return viennaImage;
+    if (cityName.includes('basel')) return baselImage;
+    if (cityName.includes('venice')) return veniceImage;
+    if (cityName.includes('paris')) return parisImage;
+    return defaultCityImage;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -283,31 +298,37 @@ const FlightSearch = () => {
                 open={expandedDestinations.has(destination)}
                 onOpenChange={() => toggleDestination(destination)}
               >
-                <Card className="bg-gradient-card shadow-card hover:shadow-flight transition-shadow duration-300">
+                <Card className="bg-gradient-card shadow-card hover:shadow-flight transition-shadow duration-300 overflow-hidden">
                   <CollapsibleTrigger className="w-full">
-                    <CardHeader className="hover:bg-muted/10 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="text-left">
-                          <CardTitle className="text-lg">{destination}</CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
+                    <div className="relative">
+                      <div 
+                        className="h-32 bg-cover bg-center relative"
+                        style={{ backgroundImage: `url(${getCityImage(destination)})` }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        <div className="absolute bottom-4 left-6 right-6 text-white">
+                          <CardTitle className="text-lg text-left">{destination}</CardTitle>
+                          <p className="text-sm text-white/90 mt-1 text-left">
                             {destinationFlights.length} flight{destinationFlights.length !== 1 ? 's' : ''} available
                           </p>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
+                      </div>
+                      <CardHeader className="hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="text-right ml-auto">
                             <p className="text-sm text-muted-foreground">Starting from</p>
                             <p className="text-lg font-bold text-primary">
                               {formatPrice(Math.min(...destinationFlights.map(f => f.total_discount_price)))}
                             </p>
                           </div>
                           {expandedDestinations.has(destination) ? (
-                            <ChevronUp className="w-5 h-5" />
+                            <ChevronUp className="w-5 h-5 ml-4" />
                           ) : (
-                            <ChevronDown className="w-5 h-5" />
+                            <ChevronDown className="w-5 h-5 ml-4" />
                           )}
                         </div>
-                      </div>
-                    </CardHeader>
+                      </CardHeader>
+                    </div>
                   </CollapsibleTrigger>
                   
                   <CollapsibleContent>
