@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Plane, RefreshCw, Search } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Plane, RefreshCw, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import airplaneHero from '@/assets/airplane-hero.jpg';
 
@@ -40,6 +41,7 @@ const FlightSearch = () => {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedDestinations, setExpandedDestinations] = useState<Set<string>>(new Set());
   
   // Search form state
   const [arrivalCode, setArrivalCode] = useState<string>('ALL');
@@ -131,6 +133,26 @@ const FlightSearch = () => {
       currency: 'MKD',
       minimumFractionDigits: 0
     }).format(price);
+  };
+
+  // Group flights by destination
+  const groupedFlights = flights.reduce((acc, flight) => {
+    const destination = flight.outbound.arrivalStation;
+    if (!acc[destination]) {
+      acc[destination] = [];
+    }
+    acc[destination].push(flight);
+    return acc;
+  }, {} as Record<string, Flight[]>);
+
+  const toggleDestination = (destination: string) => {
+    const newExpanded = new Set(expandedDestinations);
+    if (newExpanded.has(destination)) {
+      newExpanded.delete(destination);
+    } else {
+      newExpanded.add(destination);
+    }
+    setExpandedDestinations(newExpanded);
   };
 
   return (
@@ -255,84 +277,126 @@ const FlightSearch = () => {
         <div className="container mx-auto px-4 py-8">
           <h2 className="text-2xl font-bold mb-6">Flight Results ({flights.length})</h2>
           <div className="space-y-4">
-            {flights.map((flight, index) => (
-              <Card key={index} className="bg-gradient-card shadow-card hover:shadow-flight transition-shadow duration-300">
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Outbound Flight */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-primary">Outbound</h3>
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">
-                          {flight.outbound.departureStation}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          to {flight.outbound.arrivalStation}
-                        </p>
-                        <p className="font-medium">
-                          {flight.outbound.departureDate} at {flight.outbound.departureTime}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-primary">
-                            {formatPrice(flight.outbound.discountPrice)}
-                          </span>
-                          {flight.outbound.originalPrice > flight.outbound.discountPrice && (
-                            <span className="text-sm text-muted-foreground line-through">
-                              {formatPrice(flight.outbound.originalPrice)}
-                            </span>
+            {Object.entries(groupedFlights).map(([destination, destinationFlights]) => (
+              <Collapsible 
+                key={destination}
+                open={expandedDestinations.has(destination)}
+                onOpenChange={() => toggleDestination(destination)}
+              >
+                <Card className="bg-gradient-card shadow-card hover:shadow-flight transition-shadow duration-300">
+                  <CollapsibleTrigger className="w-full">
+                    <CardHeader className="hover:bg-muted/10 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="text-left">
+                          <CardTitle className="text-lg">{destination}</CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {destinationFlights.length} flight{destinationFlights.length !== 1 ? 's' : ''} available
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Starting from</p>
+                            <p className="text-lg font-bold text-primary">
+                              {formatPrice(Math.min(...destinationFlights.map(f => f.total_discount_price)))}
+                            </p>
+                          </div>
+                          {expandedDestinations.has(destination) ? (
+                            <ChevronUp className="w-5 h-5" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5" />
                           )}
                         </div>
                       </div>
-                    </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className="space-y-4">
+                        {destinationFlights.map((flight, index) => (
+                          <Card key={index} className="bg-muted/20 border-muted">
+                            <CardContent className="p-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                {/* Outbound Flight */}
+                                <div className="space-y-2">
+                                  <h4 className="font-semibold text-primary text-sm">Outbound</h4>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      {flight.outbound.departureStation}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      to {flight.outbound.arrivalStation}
+                                    </p>
+                                    <p className="text-sm font-medium">
+                                      {flight.outbound.departureDate} at {flight.outbound.departureTime}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-primary">
+                                        {formatPrice(flight.outbound.discountPrice)}
+                                      </span>
+                                      {flight.outbound.originalPrice > flight.outbound.discountPrice && (
+                                        <span className="text-xs text-muted-foreground line-through">
+                                          {formatPrice(flight.outbound.originalPrice)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
 
-                    {/* Return Flight */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-accent">Return</h3>
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">
-                          {flight.return.departureStation}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          to {flight.return.arrivalStation}
-                        </p>
-                        <p className="font-medium">
-                          {flight.return.departureDate} at {flight.return.departureTime}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-accent">
-                            {formatPrice(flight.return.discountPrice)}
-                          </span>
-                          {flight.return.originalPrice > flight.return.discountPrice && (
-                            <span className="text-sm text-muted-foreground line-through">
-                              {formatPrice(flight.return.originalPrice)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                                {/* Return Flight */}
+                                <div className="space-y-2">
+                                  <h4 className="font-semibold text-accent text-sm">Return</h4>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      {flight.return.departureStation}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      to {flight.return.arrivalStation}
+                                    </p>
+                                    <p className="text-sm font-medium">
+                                      {flight.return.departureDate} at {flight.return.departureTime}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-accent">
+                                        {formatPrice(flight.return.discountPrice)}
+                                      </span>
+                                      {flight.return.originalPrice > flight.return.discountPrice && (
+                                        <span className="text-xs text-muted-foreground line-through">
+                                          {formatPrice(flight.return.originalPrice)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
 
-                    {/* Total */}
-                    <div className="space-y-3 lg:text-right">
-                      <h3 className="font-semibold">Total Price</h3>
-                      <div className="space-y-1">
-                        <div className="text-2xl font-bold text-primary">
-                          {formatPrice(flight.total_discount_price)}
-                        </div>
-                        {flight.total_original_price > flight.total_discount_price && (
-                          <div className="text-lg text-muted-foreground line-through">
-                            {formatPrice(flight.total_original_price)}
-                          </div>
-                        )}
-                        {flight.total_original_price > flight.total_discount_price && (
-                          <div className="text-sm text-accent font-medium">
-                            Save {formatPrice(flight.total_original_price - flight.total_discount_price)}
-                          </div>
-                        )}
+                                {/* Total */}
+                                <div className="space-y-2 lg:text-right">
+                                  <h4 className="font-semibold text-sm">Total Price</h4>
+                                  <div className="space-y-1">
+                                    <div className="text-xl font-bold text-primary">
+                                      {formatPrice(flight.total_discount_price)}
+                                    </div>
+                                    {flight.total_original_price > flight.total_discount_price && (
+                                      <div className="text-sm text-muted-foreground line-through">
+                                        {formatPrice(flight.total_original_price)}
+                                      </div>
+                                    )}
+                                    {flight.total_original_price > flight.total_discount_price && (
+                                      <div className="text-xs text-accent font-medium">
+                                        Save {formatPrice(flight.total_original_price - flight.total_discount_price)}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
             ))}
           </div>
         </div>
